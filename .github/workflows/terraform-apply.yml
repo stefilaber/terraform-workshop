@@ -11,33 +11,33 @@ env:
 
 jobs:
   terraform:
+    if: github.repository != 'hashicorp-education/learn-terraform-github-actions'
+    name: "Terraform Apply"
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.CONFIG_DIRECTORY }}
+    permissions:
+      contents: read
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
-      with:
-        terraform_version: "latest" 
-        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+      - name: Upload Configuration
+        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
+        id: apply-upload
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          directory: ${{ env.CONFIG_DIRECTORY }}
 
-    - name: Terraform Init
-      run: terraform init -input=false -backend-config='address=${{ env.TF_CLOUD_TOKEN }}' -reconfigure
+      - name: Create Apply Run
+        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
+        id: apply-run
+        with:
+          workspace: ${{ env.TF_WORKSPACE }}
+          configuration_version: ${{ steps.apply-upload.outputs.configuration_version_id }}
 
-    - name: Terraform Plan
-      run: terraform plan -input=false -out=tfplan
-
-    - name: Terraform Apply
-      run: terraform apply -input=false -auto-approve tfplan
-
-    # Optional step: Upload terraform.tfstate to an artifact
-    - name: Upload Terraform State
-      uses: actions/upload-artifact@v3
-      with:
-        name: terraform-state
-        path: ${{ env.CONFIG_DIRECTORY }}/terraform.tfstate
-        if-no-files-found: error # 'warn' or 'ignore' are also available, 'error' is the default
+      - name: Apply
+        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
+        if: fromJSON(steps.apply-run.outputs.payload).data.attributes.actions.IsConfirmable
+        id: apply
+        with:
+          run: ${{ steps.apply-run.outputs.run_id }}
+          comment: "Apply Run from GitHub Actions CI ${{ github.sha }}"
