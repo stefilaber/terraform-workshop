@@ -1,8 +1,8 @@
 name: 'Terraform Destroy'
 
 on:
-  workflow_dispatch:
-  
+  workflow_dispatch: # This allows you to manually trigger the workflow from the GitHub Actions UI
+
 env:
   TF_CLOUD_ORGANIZATION: "lorenzdoe"
   TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}"
@@ -10,34 +10,33 @@ env:
   CONFIG_DIRECTORY: "./part3/"
 
 jobs:
-  terraform:
-    if: github.repository != 'hashicorp-education/learn-terraform-github-actions'
-    name: "Terraform Destroy"
+  terraform-destroy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    defaults:
+      run:
+        working-directory: ${{ env.CONFIG_DIRECTORY }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Upload Configuration
-        uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.0.0
-        id: destroy-upload
-        with:
-          workspace: ${{ env.TF_WORKSPACE }}
-          directory: ${{ env.CONFIG_DIRECTORY }}
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: "latest" # Specify desired Terraform version
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
-      - name: Create Destroy Run
-        uses: hashicorp/tfc-workflows-github/actions/create-run@v1.0.0
-        id: destroy-run
-        with:
-          workspace: ${{ env.TF_WORKSPACE }}
-          configuration_version: ${{ steps.destroy-upload.outputs.configuration_version_id }}
+    - name: Terraform Init
+      run: terraform init -input=false -backend-config='address=${{ env.TF_API_TOKEN }}' -reconfigure
 
-      - name: Destroy
-        uses: hashicorp/tfc-workflows-github/actions/apply-run@v1.0.0
-        if: fromJSON(steps.destroy-run.outputs.payload).data.attributes.actions.IsConfirmable
-        id: destroy
-        with:
-          run: ${{ steps.destroy-run.outputs.run_id }}
-          comment: "Destroy Run from GitHub Actions CI ${{ github.sha }}"
+    - name: Terraform Plan Destroy
+      run: terraform plan -destroy -input=false -out=tfdestroyplan
+
+    - name: Terraform Destroy
+      run: terraform apply -input=false -auto-approve tfdestroyplan
+
+    - name: Upload Terraform State
+      uses: actions/upload-artifact@v2
+      with:
+        name: terraform-destroy-state
+        path: ${{ env.CONFIG_DIRECTORY }}/terraform.tfstate
+        if-no-files-found: error # 'warn' or 'ignore' are also available, 'error' is the default
