@@ -1,0 +1,42 @@
+name: 'Terraform Destroy'
+
+on:
+  workflow_dispatch: # This allows you to manually trigger the workflow from the GitHub Actions UI
+
+env:
+  TF_CLOUD_ORGANIZATION: "lorenzdoe"
+  TF_CLOUD_TOKEN: "${{ secrets.TF_API_TOKEN }}"
+  TF_WORKSPACE: "terraform-workshop"
+  CONFIG_DIRECTORY: "./part3/"
+
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.CONFIG_DIRECTORY }}
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: "latest" # Specify desired Terraform version
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    - name: Terraform Init
+      run: terraform init -input=false -backend-config='address=${{ env.TF_CLOUD_TOKEN }}' -reconfigure
+
+    - name: Terraform Plan Destroy
+      run: terraform plan -destroy -input=false -out=tfdestroyplan
+
+    - name: Terraform Destroy
+      run: terraform apply -input=false -auto-approve tfdestroyplan
+
+    - name: Upload Terraform State
+      uses: actions/upload-artifact@v2
+      with:
+        name: terraform-destroy-state
+        path: ${{ env.CONFIG_DIRECTORY }}/terraform.tfstate
+        if-no-files-found: error # 'warn' or 'ignore' are also available, 'error' is the default
