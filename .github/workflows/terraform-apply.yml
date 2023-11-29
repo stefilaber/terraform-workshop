@@ -5,7 +5,7 @@ on:
   
 env:
   TF_CLOUD_ORGANIZATION: "lorenzdoe"
-  TF_CLOUD_TOKEN: "${{ secrets.TF_API_TOKEN }}"
+  TF_CLOUD_TOKEN: "Hhn24zuU5zXrUA.atlasv1.DnLThZel3ywgPq04z51a8rFLkfjAIqaUiXRPZTqCoaA9hmpOzIKyy7Psdw8T9vdqfDk"
   TF_WORKSPACE: "terraform-workshop"
   CONFIG_DIRECTORY: "./part3/"
 
