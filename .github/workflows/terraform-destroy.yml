@@ -4,7 +4,7 @@ on:
   workflow_dispatch: 
 
 env:
-  TF_CLOUD_ORGANIZATION: "lorenzdoe"
+  TF_CLOUD_ORGANIZATION: "stefilaber"
   TF_API_TOKEN: "${{ secrets.TF_API_TOKEN }}"
   TF_WORKSPACE: "terraform-workshop"
   CONFIG_DIRECTORY: "./part3"
